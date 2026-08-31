@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FireWatch DZ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Cairo:wght@500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0B0E11;
+    --panel:#141920;
+    --panel-raised:#1B222A;
+    --panel-line:rgba(255,255,255,0.07);
+    --text-hi:#F2F1ED;
+    --text-lo:#8992A1;
+    --text-dim:#5E6673;
+    --ember-red:#E5372B;
+    --ember-red-dim:rgba(229,55,43,0.16);
+    --ember-orange:#F2891E;
+    --ember-orange-dim:rgba(242,137,30,0.16);
+    --amber:#EAB308;
+    --amber-dim:rgba(234,179,8,0.16);
+    --safe-green:#3FAE72;
+    --safe-green-dim:rgba(63,174,114,0.15);
+    --gps-blue:#3B82F6;
+    --font-display:'Barlow Condensed', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+    --font-display-ar:'Noto Kufi Arabic', sans-serif;
+    --font-body-ar:'Cairo', sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--void); color:var(--text-hi); font-family:var(--font-body); height:100%;}
+  body{display:flex; flex-direction:column; align-items:center; padding:28px 12px 60px; min-height:100vh;}
+
+  .lang-bar{display:flex; gap:6px; margin-bottom:18px; background:var(--panel); border:1px solid var(--panel-line); border-radius:100px; padding:4px;}
+  .lang-btn{border:none; background:transparent; color:var(--text-lo); font-family:var(--font-mono); font-size:11.5px; letter-spacing:0.04em; padding:7px 14px; border-radius:100px; cursor:pointer; transition:background .15s,color .15s;}
+  .lang-btn.active{background:var(--ember-red); color:#fff;}
+
+  .device{
+    width:390px; max-width:100%; height:800px; max-height:88vh;
+    background:var(--void);
+    border-radius:38px;
+    border:1px solid #23282F;
+    box-shadow:0 0 0 6px #05070A, 0 30px 60px -20px rgba(0,0,0,0.7);
+    overflow:hidden;
+    position:relative;
+    display:flex; flex-direction:column;
+  }
+  .notch{position:absolute; top:0; left:50%; transform:translateX(-50%); width:120px; height:22px; background:#05070A; border-radius:0 0 16px 16px; z-index:50;}
+
+  .screen{
+    flex:1; overflow-y:auto; overflow-x:hidden;
+    padding:34px 16px 10px;
+    display:none;
+    scrollbar-width:none;
+  }
+  .screen::-webkit-scrollbar{display:none;}
+  .screen.active{display:block;}
+
+  .tabbar{
+    display:flex; border-top:1px solid var(--panel-line); background:var(--panel);
+    padding:8px 4px 14px;
+  }
+  .tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; color:var(--text-dim); font-family:var(--font-body); font-size:10.5px; cursor:pointer; padding:6px 2px;}
+  .tab svg{width:21px; height:21px; stroke:var(--text-dim); fill:none; stroke-width:1.8;}
+  .tab.active{color:var(--ember-orange);}
+  .tab.active svg{stroke:var(--ember-orange);}
+
+  /* ---- shared components ---- */
+  .top-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:22px;}
+  .brand{display:flex; align-items:center; gap:9px;}
+  .brand-mark{width:30px; height:30px; border-radius:8px; background:linear-gradient(155deg, var(--ember-orange), var(--ember-red)); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .brand-mark svg{width:16px; height:16px; fill:#0B0E11;}
+  .brand-name{font-family:var(--font-display); font-weight:700; font-size:20px; letter-spacing:0.01em; line-height:1;}
+  .live-chip{display:flex; align-items:center; gap:6px; background:var(--panel-raised); border:1px solid var(--panel-line); padding:5px 10px; border-radius:100px; font-family:var(--font-mono); font-size:10px; color:var(--text-lo);}
+  .live-dot{width:6px; height:6px; border-radius:50%; background:var(--safe-green); box-shadow:0 0 0 0 rgba(63,174,114,0.6); animation:pulse-dot 2s infinite;}
+  @keyframes pulse-dot{0%{box-shadow:0 0 0 0 rgba(63,174,114,0.5);}70%{box-shadow:0 0 0 6px rgba(63,174,114,0);}100%{box-shadow:0 0 0 0 rgba(63,174,114,0);}}
+
+  .card{background:var(--panel); border:1px solid var(--panel-line); border-radius:16px; padding:16px; margin-bottom:12px;}
+  .eyebrow{font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); margin-bottom:8px;}
+  .risk-badge{display:inline-flex; align-items:center; gap:6px; font-family:var(--font-body); font-weight:600; font-size:12px; padding:5px 11px; border-radius:100px;}
+  .risk-extreme{background:var(--ember-red-dim); color:#FF6B60;}
+  .risk-high{background:var(--ember-orange-dim); color:#FFA94D;}
+  .risk-moderate{background:var(--amber-dim); color:#F5D061;}
+  .risk-low{background:var(--safe-green-dim); color:#6FCB9A;}
+  .risk-dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+
+  /* ================= HOME ================= */
+  .banner{
+    border-radius:16px; padding:15px 16px; margin-bottom:16px;
+    background:linear-gradient(120deg, rgba(229,55,43,0.18), rgba(242,137,30,0.10));
+    border:1px solid rgba(229,55,43,0.35);
+    display:flex; align-items:center; gap:12px;
+  }
+  .banner svg{width:22px; height:22px; stroke:var(--ember-red); fill:none; stroke-width:2; flex-shrink:0;}
+  .banner-text b{display:block; font-size:13.5px; color:#FF8478; margin-bottom:1px;}
+  .banner-text span{font-size:11.5px; color:var(--text-lo);}
+
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;}
+  .stat-card{background:var(--panel); border:1px solid var(--panel-line); border-radius:16px; padding:16px;}
+  .stat-num{font-family:var(--font-display); font-weight:700; font-size:38px; line-height:1; color:var(--ember-red);}
+  .stat-label{font-size:11.5px; color:var(--text-lo); margin-top:6px;}
+
+  .weather-strip{display:flex; justify-content:space-between; background:var(--panel); border:1px solid var(--panel-line); border-radius:16px; padding:16px; margin-bottom:12px;}
+  .ws-item{display:flex; flex-direction:column; align-items:flex-start; gap:4px;}
+  [dir="rtl"] .ws-item{align-items:flex-end;}
+  .ws-val{font-family:var(--font-display); font-weight:600; font-size:22px;}
+  .ws-lbl{font-size:10.5px; color:var(--text-dim);}
+
+  .info-row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--panel-line); font-size:13px;}
+  .info-row:last-child{border-bottom:none;}
+  .info-row .k{color:var(--text-lo);}
+  .info-row .v{font-family:var(--font-mono); font-size:12.5px; color:var(--text-hi); text-align:end;}
+
+  .link-btn{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:var(--ember-orange); background:none; border:none; cursor:pointer; padding:0; margin-top:10px;}
+  .link-btn svg{width:13px; height:13px; stroke:var(--ember-orange); fill:none; stroke-width:2.4;}
+
+  .section-title{font-family:var(--font-display); font-weight:600; font-size:16px; margin:20px 0 10px; color:var(--text-hi);}
+  .section-title:first-of-type{margin-top:4px;}
+
+  /* ================= MAP ================= */
+  .map-screen{padding:0 !important; position:relative; height:100%;}
+  .map-canvas{position:absolute; inset:0; background:
+      radial-gradient(ellipse at 30% 20%, rgba(63,120,174,0.10), transparent 55%),
+      var(--void);
+      overflow:hidden;
+  }
+  .map-canvas svg.grid{position:absolute; inset:0; width:100%; height:100%; opacity:0.5;}
+  .map-search{position:absolute; top:38px; left:16px; right:16px; z-index:20; display:flex; align-items:center; gap:8px; background:rgba(20,25,32,0.92); backdrop-filter:blur(6px); border:1px solid var(--panel-line); border-radius:13px; padding:11px 13px;}
+  .map-search svg{width:16px; height:16px; stroke:var(--text-lo); fill:none; stroke-width:2; flex-shrink:0;}
+  .map-search input{background:none; border:none; outline:none; color:var(--text-hi); font-size:13px; width:100%; font-family:var(--font-body);}
+  .map-search input::placeholder{color:var(--text-dim);}
+
+  .marker{position:absolute; transform:translate(-50%,-100%); cursor:pointer; z-index:10;}
+  .marker .pin{width:16px; height:16px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); background:var(--ember-red); box-shadow:0 0 0 4px rgba(229,55,43,0.22);}
+  .marker.risk-o .pin{background:var(--ember-orange); box-shadow:0 0 0 4px rgba(242,137,30,0.22);}
+  .marker.risk-a .pin{background:var(--amber); box-shadow:0 0 0 4px rgba(234,179,8,0.22);}
+  .marker-label{position:absolute; top:-2px; left:22px; white-space:nowrap; font-family:var(--font-mono); font-size:9.5px; background:rgba(11,14,17,0.85); padding:2px 6px; border-radius:5px; color:var(--text-lo); border:1px solid var(--panel-line);}
+  [dir="rtl"] .marker-label{left:auto; right:22px;}
+
+  .gps-marker{position:absolute; transform:translate(-50%,-50%); z-index:11;}
+  .gps-dot{width:14px; height:14px; border-radius:50%; background:var(--gps-blue); border:3px solid #0B0E1140; box-shadow:0 0 0 0 rgba(59,130,246,0.5); animation:pulse-gps 2s infinite;}
+  @keyframes pulse-gps{0%{box-shadow:0 0 0 0 rgba(59,130,246,0.5);}70%{box-shadow:0 0 0 14px rgba(59,130,246,0);}100%{box-shadow:0 0 0 0 rgba(59,130,246,0);}}
+
+  .map-fab{position:absolute; bottom:18px; right:16px; z-index:20; background:var(--panel-raised); border:1px solid var(--panel-line); color:var(--text-hi); font-size:12px; font-weight:600; padding:11px 15px; border-radius:13px; display:flex; align-items:center; gap:7px; cursor:pointer;}
+  [dir="rtl"] .map-fab{right:auto; left:16px;}
+  .map-fab svg{width:15px; height:15px; stroke:var(--amber); fill:none; stroke-width:2;}
+
+  .map-legend{position:absolute; bottom:18px; left:16px; z-index:20; background:rgba(20,25,32,0.92); backdrop-filter:blur(6px); border:1px solid var(--panel-line); border-radius:13px; padding:10px 12px; font-size:10.5px; color:var(--text-lo);}
+  [dir="rtl"] .map-legend{left:auto; right:16px;}
+  .legend-row{display:flex; align-items:center; gap:6px; margin-top:4px;}
+  .legend-row:first-child{margin-top:0;}
+  .legend-sw{width:8px; height:8px; border-radius:50%;}
+
+  /* ================= DETAILS ================= */
+  .back-row{display:flex; align-items:center; gap:10px; margin-bottom:18px;}
+  .back-btn{width:32px; height:32px; border-radius:9px; background:var(--panel); border:1px solid var(--panel-line); display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .back-btn svg{width:16px; height:16px; stroke:var(--text-hi); fill:none; stroke-width:2.2;}
+  [dir="rtl"] .back-btn svg{transform:scaleX(-1);}
+  .fire-id{font-family:var(--font-mono); font-size:11px; color:var(--text-dim);}
+
+  .thumb-map{height:150px; border-radius:16px; margin-bottom:16px; position:relative; overflow:hidden; border:1px solid var(--panel-line); background:var(--void);}
+  .thumb-map svg.grid{position:absolute; inset:0; width:100%; height:100%; opacity:0.45;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .metric-card{background:var(--panel); border:1px solid var(--panel-line); border-radius:14px; padding:13px;}
+  .metric-lbl{font-size:10.5px; color:var(--text-dim); margin-bottom:5px;}
+  .metric-val{font-family:var(--font-mono); font-size:14.5px; font-weight:500;}
+
+  .btn-row{display:flex; gap:10px; margin-top:16px;}
+  .btn{flex:1; padding:13px; border-radius:12px; font-size:13px; font-weight:600; text-align:center; cursor:pointer; border:1px solid var(--panel-line); display:flex; align-items:center; justify-content:center; gap:7px;}
+  .btn svg{width:14px; height:14px; fill:none; stroke-width:2.2;}
+  .btn-primary{background:var(--ember-red); color:#fff; border-color:var(--ember-red);}
+  .btn-primary svg{stroke:#fff;}
+  .btn-ghost{background:var(--panel); color:var(--text-hi);}
+  .btn-ghost svg{stroke:var(--text-hi);}
+
+  /* ================= WEATHER ================= */
+  .wx-hero{text-align:center; padding:14px 0 20px;}
+  .wx-temp{font-family:var(--font-display); font-weight:700; font-size:74px; line-height:1;}
+  .wx-cond{color:var(--text-lo); font-size:13px; margin-top:4px;}
+  .wx-meta{display:flex; justify-content:center; gap:22px; margin-top:16px;}
+  .wx-meta-item{display:flex; flex-direction:column; align-items:center; gap:3px;}
+  .wx-meta-item svg{width:17px; height:17px; stroke:var(--amber); fill:none; stroke-width:2;}
+  .wx-meta-val{font-family:var(--font-mono); font-size:13px;}
+  .wx-meta-lbl{font-size:9.5px; color:var(--text-dim);}
+
+  .hourly-scroll{display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; margin-bottom:6px; scrollbar-width:none;}
+  .hourly-scroll::-webkit-scrollbar{display:none;}
+  .hour-card{flex:0 0 58px; background:var(--panel); border:1px solid var(--panel-line); border-radius:13px; padding:11px 0; display:flex; flex-direction:column; align-items:center; gap:7px;}
+  .hour-card .h-time{font-size:10px; color:var(--text-dim); font-family:var(--font-mono);}
+  .hour-card .h-temp{font-family:var(--font-display); font-weight:600; font-size:16px;}
+  .hour-card svg{width:15px; height:15px; stroke:var(--ember-orange); fill:none; stroke-width:2;}
+
+  .day-row{display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--panel-line); font-size:13px;}
+  .day-row:last-child{border-bottom:none;}
+  .day-name{width:78px; color:var(--text-hi);}
+  .day-icon svg{width:16px; height:16px; stroke:var(--ember-orange); fill:none; stroke-width:2;}
+  .day-temps{font-family:var(--font-mono); font-size:12.5px; display:flex; gap:8px;}
+  .day-temps .hi{color:var(--text-hi);}
+  .day-temps .lo{color:var(--text-dim);}
+
+  .fwi-card{border-radius:16px; padding:17px; margin-top:6px; background:linear-gradient(120deg, rgba(229,55,43,0.14), rgba(242,137,30,0.08)); border:1px solid rgba(229,55,43,0.3);}
+  .fwi-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;}
+  .fwi-score{font-family:var(--font-display); font-weight:700; font-size:26px; color:#FF6B60;}
+  .fwi-desc{font-size:12px; color:var(--text-lo); line-height:1.5;}
+
+  /* ================= ALERTS ================= */
+  .filter-row{display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; scrollbar-width:none;}
+  .filter-row::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto; padding:8px 14px; border-radius:100px; font-size:12px; font-weight:600; border:1px solid var(--panel-line); background:var(--panel); color:var(--text-lo); cursor:pointer; white-space:nowrap;}
+  .chip.active{background:var(--text-hi); color:var(--void); border-color:var(--text-hi);}
+
+  .alert-card{background:var(--panel); border:1px solid var(--panel-line); border-inline-start:3px solid var(--ember-red); border-radius:14px; padding:14px 15px; margin-bottom:10px;}
+  .alert-card.o{border-inline-start-color:var(--ember-orange);}
+  .alert-card.a{border-inline-start-color:var(--amber);}
+  .alert-top{display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; gap:8px;}
+  .alert-place{font-size:13.5px; font-weight:600;}
+  .alert-sub{font-size:11px; color:var(--text-dim); margin-top:2px;}
+  .alert-time{font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); white-space:nowrap;}
+  .alert-msg{font-size:12px; color:var(--text-lo); line-height:1.5; margin-bottom:10px;}
+  .alert-foot{display:flex; align-items:center; justify-content:space-between;}
+  .alert-dist{font-family:var(--font-mono); font-size:11px; color:var(--text-lo);}
+  .alert-view{font-size:11.5px; font-weight:600; color:var(--ember-orange); background:none; border:none; cursor:pointer; display:flex; align-items:center; gap:4px;}
+  .alert-view svg{width:12px; height:12px; stroke:var(--ember-orange); fill:none; stroke-width:2.4;}
+
+  body.lang-ar{font-family:var(--font-body-ar);}
+  body.lang-ar .brand-name, body.lang-ar .section-title, body.lang-ar .stat-num, body.lang-ar .ws-val,
+  body.lang-ar .wx-temp, body.lang-ar .fwi-score, body.lang-ar .hour-card .h-temp{font-family:var(--font-display-ar);}
+  body.lang-ar *{font-family:var(--font-body-ar);}
+  body.lang-ar .info-row .v, body.lang-ar .metric-val, body.lang-ar .eyebrow, body.lang-ar .fire-id,
+  body.lang-ar .marker-label, body.lang-ar .h-time, body.lang-ar .day-temps, body.lang-ar .alert-time, body.lang-ar .alert-dist{font-family:var(--font-mono);}
+</style>
+
+<body style="overscroll-behavior:none;">
+  <div class="lang-bar" role="group" aria-label="Language">
+    <button class="lang-btn active" data-lang="ar">AR</button>
+    <button class="lang-btn" data-lang="fr">FR</button>
+    <button class="lang-btn" data-lang="en">EN</button>
+  </div>
+
+  <div class="device" id="device">
+    <div class="notch"></div>
+
+    <section class="screen active" data-screen="home">
+      <div class="top-row">
+        <div class="brand">
+          <div class="brand-mark"><svg viewBox="0 0 24 24"><path d="M12 2c1 4-3 5-3 9a3 3 0 006 0c1.5 1 2 3 2 4.5A5.5 5.5 0 0112 21a5.5 5.5 0 01-5-7.8C8.5 10 11 8 12 2z"/></svg></div>
+          <div class="brand-name">FireWatch DZ <small style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">v2</small></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="live-chip"><span class="live-dot"></span><span data-i18n="live">مباشر</span></div>
+          <button onclick="fetchFires(true)" title="Refresh" style="width:28px;height:28px;border-radius:50%;background:var(--panel-raised);border:1px solid var(--panel-line);color:var(--text-lo);cursor:pointer;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7M21 4v6h-6"/></svg>
+          </button>
+          <button onclick="openSettings()" title="Settings" style="width:28px;height:28px;border-radius:50%;background:var(--panel-raised);border:1px solid var(--panel-line);color:var(--text-lo);cursor:pointer;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.6V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.6-1H3a2 2 0 110-4h.1A1.7 1.7 0 004.7 8.6a1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.6V2a2 2 0 114 0v.1a1.7 1.7 0 001 1.6 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V8a1.7 1.7 0 001.6 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.6 1z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="card" id="settingsCard" style="display:none; border-color:var(--ember-orange)">
+        <div class="eyebrow" style="margin-bottom:10px">NASA FIRMS MAP_KEY</div>
+        <p style="font-size:11.5px;color:var(--text-lo);line-height:1.6;margin-bottom:10px" id="settingsHelp">
+          احصل على مفتاح مجاني من firms.modaps.eosdis.nasa.gov/api/map_key ثم الصقه هنا لتفعيل بيانات الحرائق الحقيقية.
+        </p>
+        <div style="display:flex;gap:8px">
+          <input id="firmsKeyInput" type="text" placeholder="MAP_KEY" style="flex:1;background:var(--panel-raised);border:1px solid var(--panel-line);border-radius:10px;padding:10px;color:var(--text-hi);font-family:var(--font-mono);font-size:12px">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-primary" style="flex:1" onclick="saveFirmsKey()"><span id="settingsSave">حفظ وتحديث</span></button>
+          <button class="btn btn-ghost" style="flex:1" onclick="closeSettings()"><span id="settingsClose">إغلاق</span></button>
+        </div>
+      </div>
+
+      <div class="banner">
+        <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a2 2 0 001.7 3h15a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+        <div class="banner-text">
+          <b data-i18n="bannerTitle">مراقبة حرائق 69 ولاية</b>
+          <span data-i18n="bannerSub">اختر أي ولاية لعرض الطقس والحرائق والتنبيهات الخاصة بها</span>
+        </div>
+      </div>
+
+      <div class="eyebrow" id="firmsStatus" style="margin-bottom:14px"></div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-num" id="totalWilayas">69</div><div class="stat-label" data-i18n="wilayas">الولايات</div></div>
+        <div class="stat-card"><div class="stat-num" id="totalFires">0</div><div class="stat-label" data-i18n="activeFires">حرائق نشطة</div></div>
+      </div>
+
+      <div class="weather-strip">
+        <div class="ws-item"><span class="ws-val" id="homeTemp">--°</span><span class="ws-lbl" data-i18n="temperature">الحرارة</span></div>
+        <div class="ws-item"><span class="ws-val" id="homeHumidity">--%</span><span class="ws-lbl" data-i18n="humidity">الرطوبة</span></div>
+        <div class="ws-item"><span class="ws-val" id="homeWind">--</span><span class="ws-lbl" data-i18n="wind">الرياح</span></div>
+      </div>
+
+      <div class="section-title" data-i18n="wilayaDirectory">دليل الولايات</div>
+      <div class="card" style="padding:12px">
+        <div class="map-search" style="position:relative;top:auto;left:auto;right:auto;margin-bottom:10px">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="wilayaSearch" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="ابحث عن ولاية أو رمز">
+        </div>
+        <div id="wilayaList"></div>
+      </div>
+    </section>
+
+    <section class="screen map-screen" data-screen="map">
+      <div class="map-canvas">
+        <svg class="grid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 800" preserveAspectRatio="none">
+          <defs><pattern id="grid2" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M26 0H0V26" fill="none" stroke="#1E252D" stroke-width="1"/></pattern></defs>
+          <rect width="390" height="800" fill="url(#grid2)"/>
+          <path d="M-10 210 Q60 190 120 220 T250 205 T400 230" stroke="#2A4A63" stroke-width="2" fill="none"/>
+          <path d="M-10 230 Q60 210 120 240 T250 225 T400 250 L400 -10 L-10 -10 Z" fill="#0E1A22" opacity=".6"/>
+        </svg>
+        <div id="mapMarkers"></div>
+        <div class="map-legend">
+          <div class="legend-row"><span class="legend-sw" style="background:var(--ember-red)"></span><span data-i18n="riskExtreme">قصوى</span></div>
+          <div class="legend-row"><span class="legend-sw" style="background:var(--ember-orange)"></span><span data-i18n="riskHigh">مرتفع</span></div>
+          <div class="legend-row"><span class="legend-sw" style="background:var(--amber)"></span><span data-i18n="riskModerate">متوسط</span></div>
+        </div>
+        <button class="map-fab" onclick="toggleSatellite()">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18M3 12h18"/></svg>
+          <span id="satLabel" data-i18n="satelliteLayer">قمر صناعي</span>
+        </button>
+      </div>
+      <div class="map-search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="mapSearch" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="ابحث عن ولاية أو بلدية">
+      </div>
+    </section>
+
+    <section class="screen" data-screen="details">
+      <div class="back-row">
+        <button class="back-btn" onclick="goTo('home')"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div><div style="font-family:var(--font-display);font-weight:600;font-size:17px" id="det-title"></div><div class="fire-id" id="det-id"></div></div>
+      </div>
+      <div class="thumb-map"><svg class="grid" viewBox="0 0 390 150"><rect width="390" height="150" fill="#0E1A22"/><path d="M-10 60 Q90 40 190 65 T400 55" stroke="#2A4A63" stroke-width="2" fill="none"/></svg><div class="marker" style="top:90px;left:190px"><div class="pin" style="width:20px;height:20px"></div></div></div>
+      <span class="risk-badge" id="det-risk-badge"><span class="risk-dot"></span><span id="det-risk"></span></span>
+      <div class="card" style="margin-top:12px">
+        <div class="info-row"><span class="k" data-i18n="wilaya">الولاية</span><span class="v" id="det-wilaya"></span></div>
+        <div class="info-row"><span class="k" data-i18n="commune">البلدية</span><span class="v" id="det-commune"></span></div>
+        <div class="info-row"><span class="k" data-i18n="coordinates">الإحداثيات</span><span class="v" id="det-coords"></span></div>
+        <div class="info-row"><span class="k" data-i18n="detectionTime">وقت الاكتشاف</span><span class="v" id="det-time"></span></div>
+        <div class="info-row"><span class="k" data-i18n="satelliteSource">مصدر الرصد</span><span class="v" id="det-source">—</span></div>
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        <div class="metric-card"><div class="metric-lbl" data-i18n="confidence">الثقة</div><div class="metric-val" id="det-confidence">--%</div></div>
+        <div class="metric-card"><div class="metric-lbl" data-i18n="distance">المسافة</div><div class="metric-val" id="det-distance">-- km</div></div>
+        <div class="metric-card"><div class="metric-lbl" data-i18n="wind">الرياح</div><div class="metric-val" id="det-wind">--</div></div>
+        <div class="metric-card"><div class="metric-lbl" data-i18n="fireRiskLevel">الخطر</div><div class="metric-val" id="det-risk2">--</div></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="goTo('map')"><span data-i18n="viewOnMap">عرض على الخريطة</span></button>
+        <button class="btn btn-ghost" onclick="alert(currentWilaya ? currentWilaya.name[currentLang] : '')"><span data-i18n="share">مشاركة</span></button>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="weather">
+      <div class="top-row"><div class="section-title" style="margin:0" data-i18n="weather">الطقس</div><div class="eyebrow" id="weatherWilaya"></div></div>
+      <div class="wx-hero">
+        <div class="wx-temp" id="wxTemp">--°</div>
+        <div class="wx-cond" data-i18n="wxCond">بيانات الطقس للولاية المحددة</div>
+        <div class="wx-meta">
+          <div class="wx-meta-item"><span class="wx-meta-val" id="wxHumidity">--%</span><span class="wx-meta-lbl" data-i18n="humidity">الرطوبة</span></div>
+          <div class="wx-meta-item"><span class="wx-meta-val" id="wxWind">--</span><span class="wx-meta-lbl" data-i18n="wind">الرياح</span></div>
+          <div class="wx-meta-item"><span class="wx-meta-val" id="wxRain">--%</span><span class="wx-meta-lbl" data-i18n="rainChance">احتمال المطر</span></div>
+        </div>
+      </div>
+      <div class="section-title" data-i18n="sevenDayForecast">توقعات 7 أيام</div>
+      <div class="card" id="daily"></div>
+      <div class="fwi-card"><div class="fwi-top"><span class="eyebrow" style="margin:0" data-i18n="fireWeatherRisk">خطر الطقس الناري</span><span class="fwi-score" id="fwiScore">-- / 100</span></div><div class="fwi-desc" data-i18n="fwiDesc">مؤشر تجريبي يعتمد على الحرارة والرطوبة والرياح. لا يُعد تنبيهًا رسميًا.</div></div>
+    </section>
+
+    <section class="screen" data-screen="alerts">
+      <div class="top-row"><div class="section-title" style="margin:0" data-i18n="alertsTitle">التنبيهات</div><div class="live-chip"><span class="live-dot"></span><span id="alertCount">0</span></div></div>
+      <div class="filter-row">
+        <button class="chip active" data-filter="all" data-i18n="filterAll">الكل</button>
+        <button class="chip" data-filter="extreme" data-i18n="riskExtreme">قصوى</button>
+        <button class="chip" data-filter="high" data-i18n="riskHigh">مرتفع</button>
+        <button class="chip" data-filter="moderate" data-i18n="riskModerate">متوسط</button>
+      </div>
+      <div id="alertsList"></div>
+    </section>
+
+    <div class="tabbar">
+      <button class="tab active" data-tab="home" onclick="goTo('home')"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span data-i18n="navHome">الرئيسية</span></button>
+      <button class="tab" data-tab="map" onclick="goTo('map')"><svg viewBox="0 0 24 24"><path d="M9 20l-5.4-2.7A1 1 0 013 16.4V5.6a1 1 0 011.4-.9L9 6.7m0 13.3l6-2m-6-13.3l6 2m0 11.3l4.6 2.3a1 1 0 001.4-.9V7.6a1 1 0 00-.6-.9L15 4.7m0 15.3v-13"/></svg><span data-i18n="navMap">الخريطة</span></button>
+      <button class="tab" data-tab="details" onclick="openDetails()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span data-i18n="navDetails">التفاصيل</span></button>
+      <button class="tab" data-tab="weather" onclick="goTo('weather')"><svg viewBox="0 0 24 24"><path d="M8 16.7A5 5 0 019 7a6 6 0 0111.7 1.7A4 4 0 0119 17H8z"/></svg><span data-i18n="navWeather">الطقس</span></button>
+      <button class="tab" data-tab="alerts" onclick="goTo('alerts')"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span data-i18n="navAlerts">التنبيهات</span></button>
+    </div>
+  </div>
+
+<script>
+const WILAYAS = [
+["01","أدرار","Adrar",27.87,-0.29],["02","الشلف","Chlef",36.17,1.33],["03","الأغواط","Laghouat",33.80,2.86],["04","أم البواقي","Oum El Bouaghi",35.87,7.11],
+["05","باتنة","Batna",35.56,6.17],["06","بجاية","Béjaïa",36.75,5.08],["07","بسكرة","Biskra",34.85,5.73],["08","بشار","Béchar",31.62,-2.22],
+["09","البليدة","Blida",36.47,2.83],["10","البويرة","Bouira",36.38,3.90],["11","تمنراست","Tamanrasset",22.79,5.53],["12","تبسة","Tébessa",35.40,8.12],
+["13","تلمسان","Tlemcen",34.88,-1.32],["14","تيارت","Tiaret",35.37,1.32],["15","تيزي وزو","Tizi Ouzou",36.72,4.05],["16","الجزائر","Alger",36.75,3.06],
+["17","الجلفة","Djelfa",34.67,3.25],["18","جيجل","Jijel",36.82,5.77],["19","سطيف","Sétif",36.19,5.41],["20","سعيدة","Saïda",34.83,0.15],
+["21","سكيكدة","Skikda",36.88,6.90],["22","سيدي بلعباس","Sidi Bel Abbès",35.19,-0.63],["23","عنابة","Annaba",36.90,7.77],["24","قالمة","Guelma",36.46,7.43],
+["25","قسنطينة","Constantine",36.37,6.61],["26","المدية","Médéa",36.26,2.75],["27","مستغانم","Mostaganem",35.93,0.09],["28","المسيلة","M'Sila",35.70,4.54],
+["29","معسكر","Mascara",35.40,0.14],["30","ورقلة","Ouargla",31.95,5.32],["31","وهران","Oran",35.70,-0.63],["32","البيض","El Bayadh",33.68,1.02],
+["33","إليزي","Illizi",26.48,8.47],["34","برج بوعريريج","Bordj Bou Arréridj",36.07,4.76],["35","بومرداس","Boumerdès",36.77,3.47],["36","الطارف","El Tarf",36.77,8.31],
+["37","تندوف","Tindouf",27.67,-8.13],["38","تيسمسيلت","Tissemsilt",35.61,1.81],["39","الوادي","El Oued",33.37,6.87],["40","خنشلة","Khenchela",35.44,7.14],
+["41","سوق أهراس","Souk Ahras",36.29,7.95],["42","تيبازة","Tipaza",36.59,2.45],["43","ميلة","Mila",36.45,6.26],["44","عين الدفلى","Aïn Defla",36.26,1.97],
+["45","النعامة","Naâma",33.27,-0.31],["46","عين تموشنت","Aïn Témouchent",35.30,-1.14],["47","غرداية","Ghardaïa",32.49,3.67],["48","غليزان","Relizane",35.74,0.56],
+["49","تيميمون","Timimoun",29.26,0.24],["50","برج باجي مختار","Bordj Badji Mokhtar",21.33,0.95],["51","أولاد جلال","Ouled Djellal",34.42,5.07],["52","بني عباس","Béni Abbès",30.13,-2.17],
+["53","عين صالح","In Salah",27.19,2.48],["54","عين قزام","In Guezzam",19.57,5.77],["55","تقرت","Touggourt",33.10,6.06],["56","جانت","Djanet",24.55,9.48],
+["57","المغير","El Meghaier",33.95,5.93],["58","المنيعة","El Meniaa",30.58,2.88],["59","آفلو","Aflou",34.11,2.10],["60","بريكة","Barika",35.38,5.37],["61","القنطرة","El Kantara",35.22,5.71],["62","بئر العاتر","Bir El Ater",34.75,8.06],
+["63","العريشة","El Aricha",34.30,-1.27],["64","قصر الشلالة","Ksar Chellala",35.20,2.31],["65","عين وسارة","Aïn Oussera",35.45,2.90],["66","مسعد","Messaad",34.15,3.50],
+["67","قصر البخاري","Ksar El Boukhari",35.87,2.77],["68","بوسعادة","Bou Saâda",35.21,4.19],["69","الأبيض سيدي الشيخ","El Bayadh Sidi Cheikh",32.75,0.43]
+].map(x=>({code:x[0],name:{ar:x[1],fr:x[2],en:x[2]},lat:x[3],lon:x[4]}));
+
+/* بيانات تجريبية احتياطية — تُستخدم فقط إذا تعذّر الاتصال بـ FIRMS أو لم يُدخل مفتاح API بعد. */
+const DEMO_FIRE_DATA = {
+  "06":[{commune:"أميزور",risk:"high",dist:"18.4",ago:52,confidence:91,coords:"36.64° N, 4.90° E"}],
+  "10":[{commune:"عين بسام",risk:"moderate",dist:"34.9",ago:105,confidence:86,coords:"36.30° N, 3.67° E"}],
+  "15":[{commune:"آيت بوعدو",risk:"extreme",dist:"6.2",ago:34,confidence:94,coords:"36.72° N, 4.05° E"}],
+  "18":[{commune:"الطاهير",risk:"extreme",dist:"27.1",ago:71,confidence:89,coords:"36.77° N, 5.90° E"}],
+  "21":[{commune:"القل",risk:"high",dist:"41.3",ago:140,confidence:84,coords:"37.00° N, 6.55° E"}]
+};
+let FIRE_DATA = DEMO_FIRE_DATA;
+let dataSource = "demo"; // "demo" | "live" | "error"
+let lastFetchTime = null;
+
+/* ============ تكامل NASA FIRMS / VIIRS ============ */
+const FIRMS_KEY_STORAGE = "firewatch_firms_map_key";
+function haversineKm(lat1,lon1,lat2,lon2){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function nearestWilaya(lat,lon){
+  let best=null, bestDist=Infinity;
+  WILAYAS.forEach(w=>{const d=haversineKm(lat,lon,w.lat,w.lon); if(d<bestDist){bestDist=d; best=w;}});
+  return {wilaya:best, distKm:bestDist};
+}
+function parseCsv(text){
+  const lines=text.trim().split("\n");
+  if(lines.length<2) return [];
+  const headers=lines[0].split(",").map(h=>h.trim());
+  return lines.slice(1).map(line=>{
+    const cells=line.split(",");
+    const row={}; headers.forEach((h,i)=>row[h]=cells[i]);
+    return row;
+  });
+}
+function satelliteName(row){
+  const inst=(row.instrument||"VIIRS").toUpperCase();
+  const sat=(row.satellite||"").toUpperCase();
+  if(inst==="MODIS") return sat==="T"?"MODIS · Terra":sat==="A"?"MODIS · Aqua":"MODIS";
+  if(sat==="N") return "VIIRS · Suomi NPP";
+  if(sat==="1") return "VIIRS · NOAA-20";
+  if(sat==="2") return "VIIRS · NOAA-21";
+  return "VIIRS";
+}
+function normalizedConfidence(row){
+  const raw=(row.confidence||"").trim();
+  const num=parseFloat(raw);
+  if(!isNaN(num)) return {pct:Math.round(num), label:null};
+  const map={l:{pct:35,label:"low"},n:{pct:65,label:"nominal"},h:{pct:90,label:"high"}};
+  return map[raw.toLowerCase()]||{pct:50,label:"nominal"};
+}
+function riskFromDetection(confPct, frp){
+  if(confPct>=80 && frp>=40) return "extreme";
+  if(confPct>=55 && frp>=12) return "high";
+  return "moderate";
+}
+async function fetchFires(manual){
+  const key=localStorage.getItem(FIRMS_KEY_STORAGE);
+  const statusEl=document.getElementById("firmsStatus");
+  if(!key){
+    if(manual) openSettings();
+    dataSource="demo"; FIRE_DATA=DEMO_FIRE_DATA; refreshAllScreens();
+    return;
+  }
+  if(statusEl) statusEl.textContent = currentLang==="ar"?"جارٍ الاتصال بـ FIRMS…":currentLang==="fr"?"Connexion à FIRMS…":"Connecting to FIRMS…";
+  const url=`https://firms.modaps.eosdis.nasa.gov/api/country/csv/${key}/VIIRS_SNPP_NRT/DZA/1`;
+  try{
+    const res=await fetch(url);
+    const text=await res.text();
+    if(!res.ok || text.toLowerCase().includes("invalid") || text.toLowerCase().includes("error")){
+      throw new Error(text.slice(0,120));
+    }
+    const rows=parseCsv(text);
+    const grouped={};
+    const nowUtc=Date.now();
+    rows.forEach(row=>{
+      const lat=parseFloat(row.latitude), lon=parseFloat(row.longitude);
+      if(isNaN(lat)||isNaN(lon)) return;
+      const {wilaya, distKm}=nearestWilaya(lat,lon);
+      if(!wilaya || distKm>120) return; // خارج نطاق أي ولاية معروفة بدقة كافية
+      const conf=normalizedConfidence(row);
+      const frp=parseFloat(row.frp)||0;
+      const risk=riskFromDetection(conf.pct, frp);
+      const acqDate=row.acq_date, acqTime=(row.acq_time||"0000").padStart(4,"0");
+      const detectedUtc=Date.parse(`${acqDate}T${acqTime.slice(0,2)}:${acqTime.slice(2)}:00Z`);
+      const ago=isNaN(detectedUtc)?null:Math.max(0,Math.round((nowUtc-detectedUtc)/60000));
+      (grouped[wilaya.code]=grouped[wilaya.code]||[]).push({
+        commune:"—", risk, dist:distKm.toFixed(1), ago:ago??0,
+        confidence:conf.pct, coords:`${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E`,
+        satellite:satelliteName(row), frp
+      });
+    });
+    Object.values(grouped).forEach(list=>list.sort((a,b)=>a.dist-b.dist));
+    FIRE_DATA = Object.keys(grouped).length ? grouped : {};
+    dataSource="live"; lastFetchTime=new Date();
+    refreshAllScreens();
+  }catch(err){
+    dataSource="error"; FIRE_DATA=DEMO_FIRE_DATA;
+    refreshAllScreens();
+  }
+}
+function saveFirmsKey(){
+  const input=document.getElementById("firmsKeyInput");
+  const val=(input.value||"").trim();
+  if(val){ localStorage.setItem(FIRMS_KEY_STORAGE, val); fetchFires(true); }
+}
+function openSettings(){ document.getElementById("settingsCard").style.display="block"; }
+function closeSettings(){ document.getElementById("settingsCard").style.display="none"; }
+function refreshAllScreens(){
+  const statusEl=document.getElementById("firmsStatus");
+  if(statusEl){
+    if(dataSource==="live") statusEl.textContent = (currentLang==="ar"?"بيانات حية من FIRMS/VIIRS — آخر تحديث ":currentLang==="fr"?"Données en direct FIRMS/VIIRS — mise à jour ":"Live FIRMS/VIIRS data — updated ") + (lastFetchTime? lastFetchTime.toLocaleTimeString(currentLang):"");
+    else if(dataSource==="error") statusEl.textContent = currentLang==="ar"?"تعذّر الاتصال بـ FIRMS — يتم عرض بيانات تجريبية":currentLang==="fr"?"Échec de connexion à FIRMS — données de démonstration affichées":"Couldn't reach FIRMS — showing demo data";
+    else statusEl.textContent = currentLang==="ar"?"بيانات تجريبية — أضف مفتاح FIRMS من الإعدادات لعرض حرائق حقيقية":currentLang==="fr"?"Données de démonstration — ajoutez une clé FIRMS dans les réglages":"Demo data — add a FIRMS key in settings for live fires";
+  }
+  renderHome(); renderWilayas(document.getElementById("wilayaSearch").value); renderMap(); renderAlerts(); renderWeather();
+}
+
+const WEATHER_DATA = {
+  "01":[38,14,31],"06":[34,27,24],"10":[33,29,19],"15":[35,22,28],"18":[32,46,17],"21":[33,51,16],"31":[36,38,25],"32":[35,25,27]
+};
+const I18N = {
+ ar:{live:"مباشر",bannerTitle:"مراقبة حرائق 69 ولاية",bannerSub:"اختر أي ولاية لعرض الطقس والحرائق والتنبيهات الخاصة بها",wilayas:"الولايات",activeFires:"حرائق نشطة",temperature:"الحرارة",humidity:"الرطوبة",wind:"الرياح",wilayaDirectory:"دليل الولايات",searchPlaceholder:"ابحث عن ولاية أو رمز",wilaya:"الولاية",commune:"البلدية",coordinates:"الإحداثيات",detectionTime:"وقت الاكتشاف",satelliteSource:"مصدر الرصد",confidence:"الثقة",distance:"المسافة",fireRiskLevel:"الخطر",viewOnMap:"عرض على الخريطة",share:"مشاركة",weather:"الطقس",wxCond:"بيانات الطقس للولاية المحددة",rainChance:"احتمال المطر",sevenDayForecast:"توقعات 7 أيام",fireWeatherRisk:"خطر الطقس الناري",fwiDesc:"مؤشر تجريبي يعتمد على الحرارة والرطوبة والرياح. لا يُعد تنبيهًا رسميًا.",alertsTitle:"التنبيهات",filterAll:"الكل",riskExtreme:"قصوى",riskHigh:"مرتفع",riskModerate:"متوسط",riskLow:"منخفض",navHome:"الرئيسية",navMap:"الخريطة",navDetails:"التفاصيل",navWeather:"الطقس",navAlerts:"التنبيهات",satelliteLayer:"قمر صناعي",standardLayer:"عادي",firmsHelp:"احصل على مفتاح مجاني من firms.modaps.eosdis.nasa.gov/api/map_key ثم الصقه هنا لتفعيل بيانات الحرائق الحقيقية. يبقى المفتاح محفوظًا على هاتفك فقط.",firmsSave:"حفظ وتحديث",firmsClose:"إغلاق"},
+ fr:{live:"DIRECT",bannerTitle:"Surveillance des incendies — 69 wilayas",bannerSub:"Sélectionnez une wilaya pour voir météo, feux et alertes",wilayas:"Wilayas",activeFires:"Incendies actifs",temperature:"Température",humidity:"Humidité",wind:"Vent",wilayaDirectory:"Liste des wilayas",searchPlaceholder:"Rechercher une wilaya ou un code",wilaya:"Wilaya",commune:"Commune",coordinates:"Coordonnées",detectionTime:"Heure de détection",satelliteSource:"Source",confidence:"Confiance",distance:"Distance",fireRiskLevel:"Risque",viewOnMap:"Voir sur la carte",share:"Partager",weather:"Météo",wxCond:"Météo de la wilaya sélectionnée",rainChance:"Probabilité de pluie",sevenDayForecast:"Prévisions 7 jours",fireWeatherRisk:"Risque météo d'incendie",fwiDesc:"Indice de démonstration basé sur chaleur, humidité et vent. Pas une alerte officielle.",alertsTitle:"Alertes",filterAll:"Toutes",riskExtreme:"Extrême",riskHigh:"Élevé",riskModerate:"Modéré",riskLow:"Faible",navHome:"Accueil",navMap:"Carte",navDetails:"Détails",navWeather:"Météo",navAlerts:"Alertes",satelliteLayer:"Satellite",standardLayer:"Standard",firmsHelp:"Obtenez une clé gratuite sur firms.modaps.eosdis.nasa.gov/api/map_key puis collez-la ici pour activer les données réelles. La clé reste uniquement sur votre téléphone.",firmsSave:"Enregistrer et actualiser",firmsClose:"Fermer"},
+ en:{live:"LIVE",bannerTitle:"Fire monitoring — 69 wilayas",bannerSub:"Select a wilaya to view its weather, fires and alerts",wilayas:"Wilayas",activeFires:"Active fires",temperature:"Temperature",humidity:"Humidity",wind:"Wind",wilayaDirectory:"Wilaya directory",searchPlaceholder:"Search wilaya or code",wilaya:"Wilaya",commune:"Commune",coordinates:"Coordinates",detectionTime:"Detection time",satelliteSource:"Source",confidence:"Confidence",distance:"Distance",fireRiskLevel:"Risk",viewOnMap:"View on map",share:"Share",weather:"Weather",wxCond:"Weather for selected wilaya",rainChance:"Rain chance",sevenDayForecast:"7-day forecast",fireWeatherRisk:"Fire weather risk",fwiDesc:"Demonstration index based on heat, humidity and wind. Not an official alert.",alertsTitle:"Alerts",filterAll:"All",riskExtreme:"Extreme",riskHigh:"High",riskModerate:"Moderate",riskLow:"Low",navHome:"Home",navMap:"Map",navDetails:"Details",navWeather:"Weather",navAlerts:"Alerts",satelliteLayer:"Satellite",standardLayer:"Standard",firmsHelp:"Get a free key at firms.modaps.eosdis.nasa.gov/api/map_key then paste it here to enable real fire data. The key stays on your phone only.",firmsSave:"Save & refresh",firmsClose:"Close"}
+};
+let currentLang="ar", currentWilaya=WILAYAS.find(w=>w.code==="15"), activeFilter="all";
+
+function t(k){return I18N[currentLang][k]||k}
+function firesFor(w){return FIRE_DATA[w.code]||[]}
+function riskLabel(r){return t("risk"+r[0].toUpperCase()+r.slice(1))}
+function setLanguage(lang){
+ currentLang=lang; document.body.classList.toggle("lang-ar",lang==="ar");
+ document.documentElement.lang=lang; document.getElementById("device").dir=lang==="ar"?"rtl":"ltr"; document.body.dir=lang==="ar"?"rtl":"ltr";
+ document.querySelectorAll(".lang-btn").forEach(b=>b.classList.toggle("active",b.dataset.lang===lang));
+ document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
+ document.querySelectorAll("[data-i18n-placeholder]").forEach(el=>el.placeholder=t(el.dataset.i18nPlaceholder));
+ document.getElementById("settingsHelp").textContent=t("firmsHelp");
+ document.getElementById("settingsSave").textContent=t("firmsSave");
+ document.getElementById("settingsClose").textContent=t("firmsClose");
+ refreshAllScreens();
+}
+function selectWilaya(code){
+ currentWilaya=WILAYAS.find(w=>w.code===code)||WILAYAS[0];
+ renderHome(); renderWeather(); renderAlerts(); renderMap();
+ goTo("details"); fillDetails(firesFor(currentWilaya)[0]);
+}
+function renderWilayas(q=""){
+ q=q.trim().toLowerCase();
+ const list=document.getElementById("wilayaList");
+ const filtered=WILAYAS.filter(w=>w.code.includes(q)||w.name.ar.toLowerCase().includes(q)||w.name.fr.toLowerCase().includes(q));
+ list.innerHTML=filtered.map(w=>{
+  const fs=firesFor(w), max=fs[0]?.risk||"low";
+  return `<div onclick="selectWilaya('${w.code}')" style="display:flex;align-items:center;justify-content:space-between;padding:11px 8px;border-bottom:1px solid var(--panel-line);cursor:pointer">
+   <div><b style="font-size:13px">${w.code} — ${w.name[currentLang]}</b><div style="font-size:10px;color:var(--text-dim)">${w.name.fr}</div></div>
+   <span class="risk-badge risk-${max}" style="font-size:10px">${fs.length?fs.length+" 🔥":riskLabel("low")}</span>
+  </div>`
+ }).join("")||`<div style="padding:20px;text-align:center;color:var(--text-dim)">لا توجد نتائج</div>`;
+}
+function renderHome(){
+ const all=WILAYAS.reduce((n,w)=>n+firesFor(w).length,0), fs=firesFor(currentWilaya), wx=WEATHER_DATA[currentWilaya.code]||[32,35,18];
+ document.getElementById("totalFires").textContent=all; document.getElementById("homeTemp").textContent=wx[0]+"°"; document.getElementById("homeHumidity").textContent=wx[1]+"%"; document.getElementById("homeWind").textContent=wx[2]+" km/h";
+}
+function fillDetails(f){
+ f=f||{commune:"—",risk:"low",dist:"—",ago:0,confidence:"—",coords:"—"};
+ document.getElementById("det-title").textContent=currentWilaya.name[currentLang]; document.getElementById("det-id").textContent="FWDZ-"+currentWilaya.code+"-"+(f.risk||"none").toUpperCase();
+ document.getElementById("det-wilaya").textContent=currentWilaya.name[currentLang]; document.getElementById("det-commune").textContent=f.commune;
+ document.getElementById("det-coords").textContent=f.coords; document.getElementById("det-time").textContent=f.ago?f.ago+" min":"—";
+ document.getElementById("det-source").textContent=f.satellite||(dataSource==="live"?"—":"VIIRS / MODIS");
+ document.getElementById("det-confidence").textContent=f.confidence+"%"; document.getElementById("det-distance").textContent=f.dist+" km";
+ document.getElementById("det-wind").textContent=(WEATHER_DATA[currentWilaya.code]||[0,0,0])[2]+" km/h";
+ document.getElementById("det-risk").textContent=riskLabel(f.risk); document.getElementById("det-risk2").textContent=riskLabel(f.risk);
+ document.getElementById("det-risk-badge").className="risk-badge risk-"+f.risk;
+}
+function openDetails(code){if(code){currentWilaya=WILAYAS.find(w=>w.code===code)||currentWilaya} fillDetails(firesFor(currentWilaya)[0]); goTo("details")}
+function renderWeather(){
+ const wx=WEATHER_DATA[currentWilaya.code]||[32,35,18]; document.getElementById("weatherWilaya").textContent=currentWilaya.name[currentLang];
+ document.getElementById("wxTemp").textContent=wx[0]+"°"; document.getElementById("wxHumidity").textContent=wx[1]+"%"; document.getElementById("wxWind").textContent=wx[2]+" km/h"; document.getElementById("wxRain").textContent=Math.max(5,50-wx[1])+"%";
+ const score=Math.min(99,Math.max(5,Math.round((wx[0]*1.5)+(100-wx[1])*0.45+wx[2]*0.35))); document.getElementById("fwiScore").textContent=score+" / 100";
+ document.getElementById("daily").innerHTML=[0,1,2,3,4,5,6].map((d,i)=>`<div class="day-row"><span class="day-name">${["اليوم","غدًا","بعد غد","اليوم 4","اليوم 5","اليوم 6","اليوم 7"][i]}</span><span class="day-temps"><span class="hi">${wx[0]-i}°</span><span class="lo">${wx[0]-13-i}°</span></span></div>`).join("");
+}
+function renderAlerts(){
+ const fs=[]; WILAYAS.forEach(w=>firesFor(w).forEach(f=>fs.push({...f,w})));
+ const shown=activeFilter==="all"?fs:fs.filter(x=>x.risk===activeFilter); document.getElementById("alertCount").textContent=fs.length;
+ document.getElementById("alertsList").innerHTML=shown.map(x=>`<div class="alert-card ${x.risk==="high"?"o":x.risk==="moderate"?"a":""}" onclick="selectWilaya('${x.w.code}')">
+ <div class="alert-top"><div><div class="alert-place">${x.w.name[currentLang]} · ${x.commune}</div><div class="alert-sub">${riskLabel(x.risk)}</div></div><div class="alert-time">${x.ago} min</div></div>
+ <div class="alert-msg">${riskLabel(x.risk)} — ${x.confidence}% confidence (demo data).</div><div class="alert-foot"><span class="alert-dist">${x.dist} km</span><button class="alert-view" onclick="event.stopPropagation();selectWilaya('${x.w.code}')">${t("viewOnMap")} ›</button></div></div>`).join("")||`<div class="card" style="text-align:center;color:var(--text-dim)">لا توجد تنبيهات في هذا التصنيف</div>`;
+}
+function renderMap(){
+ const markers=WILAYAS.filter(w=>firesFor(w).length).slice(0,20);
+ document.getElementById("mapMarkers").innerHTML=markers.map((w,i)=>{const f=firesFor(w)[0]; return `<div class="marker ${f.risk==="high"?"risk-o":f.risk==="moderate"?"risk-a":""}" style="top:${170+(i%7)*55}px;left:${55+(i%5)*70}px" onclick="selectWilaya('${w.code}')"><div class="pin"></div><div class="marker-label">${w.code} ${w.name[currentLang]}</div></div>`}).join("");
+}
+function goTo(screen){document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.dataset.screen===screen));document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===screen));if(screen==="map")renderMap();if(screen==="weather")renderWeather();if(screen==="alerts")renderAlerts()}
+function toggleSatellite(){const c=document.querySelector(".map-canvas"),on=c.style.filter;c.style.filter=on?"":"hue-rotate(60deg) saturate(1.4)";document.getElementById("satLabel").textContent=on?t("satelliteLayer"):t("standardLayer")}
+document.querySelectorAll(".lang-btn").forEach(b=>b.addEventListener("click",()=>setLanguage(b.dataset.lang)));
+document.getElementById("wilayaSearch").addEventListener("input",e=>renderWilayas(e.target.value));
+document.getElementById("mapSearch").addEventListener("input",e=>{const q=e.target.value.toLowerCase();const w=WILAYAS.find(x=>x.code===q||x.name.ar.toLowerCase().includes(q)||x.name.fr.toLowerCase().includes(q));if(w)selectWilaya(w.code)});
+document.querySelectorAll(".chip").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter;renderAlerts()}));
+setLanguage("ar"); renderHome(); renderWilayas(); renderMap(); renderAlerts(); renderWeather(); fillDetails(firesFor(currentWilaya)[0]);
+fetchFires(false);
+setInterval(()=>fetchFires(false), 15*60*1000); // إعادة الجلب كل 15 دقيقة (حدود FIRMS: 5000 طلب/10 دقائق)
+</script>
+</body>
+</html>
