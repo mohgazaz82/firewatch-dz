@@ -26,6 +26,10 @@ jobs:
         run: npx cap add android
       - name: Sync web app
         run: npx cap sync android
+        - name: Use persistent debug keystore
+        run: |
+          mkdir -p ~/.android
+          base64 -d ci/debug.keystore.b64 > ~/.android/debug.keystore
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug
