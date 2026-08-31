@@ -495,7 +495,7 @@ async function fetchFires(manual){
       const {wilaya, distKm}=nearestWilaya(lat,lon);
       if(!wilaya || distKm>120) return; // خارج نطاق أي ولاية معروفة بدقة كافية
       const conf=normalizedConfidence(row);
-      const frp=parseFloat(row.frp)||0;
+      if(conf.pct<50||frp<1) return;
       const risk=riskFromDetection(conf.pct, frp);
       const acqDate=row.acq_date, acqTime=(row.acq_time||"0000").padStart(4,"0");
       const detectedUtc=Date.parse(`${acqDate}T${acqTime.slice(0,2)}:${acqTime.slice(2)}:00Z`);
