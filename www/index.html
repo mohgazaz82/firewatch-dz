@@ -479,7 +479,7 @@ async function fetchFires(manual){
     return;
   }
   if(statusEl) statusEl.textContent = currentLang==="ar"?"جارٍ الاتصال بـ FIRMS…":currentLang==="fr"?"Connexion à FIRMS…":"Connecting to FIRMS…";
-  const url=`https://firms.modaps.eosdis.nasa.gov/api/country/csv/${key}/VIIRS_SNPP_NRT/DZA/1`;
+  const url=`https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/-8.7,18.9,12,37.3/1`;
   try{
     const res=await fetch(url);
     const text=await res.text();
