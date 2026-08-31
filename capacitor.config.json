@@ -1,0 +1,8 @@
+{
+  "appId": "dz.firewatch.app",
+  "appName": "FireWatch DZ",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
