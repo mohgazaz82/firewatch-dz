@@ -531,10 +531,34 @@ function refreshAllScreens(){
   }
   renderHome(); renderWilayas(document.getElementById("wilayaSearch").value); renderMap(); renderAlerts(); renderWeather();
 }
+let LIVE_WEATHER = {};
+const WEATHER_CACHE_MS = 20*60*1000;
+function dayLabel(dateStr){
+  const d=new Date(dateStr+"T00:00:00");
+  const loc={ar:"ar-DZ",fr:"fr-FR",en:"en-US"}[currentLang]||"ar-DZ";
+  return new Intl.DateTimeFormat(loc,{weekday:"short"}).format(d);
+}
+async function fetchWeather(wilaya){
+  const cached=LIVE_WEATHER[wilaya.code];
+  if(cached && cached.source==="live" && Date.now()-cached.fetchedAt<WEATHER_CACHE_MS){ refreshWeatherUI(); return; }
+  try{
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${wilaya.lat}&longitude=${wilaya.lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error("bad response");
+    const data=await res.json();
+    LIVE_WEATHER[wilaya.code]={
+      t:Math.round(data.current.temperature_2m), h:Math.round(data.current.relative_humidity_2m),
+      w:Math.round(data.current.wind_speed_10m), rain:data.current.precipitation_probability??0,
+      daily:data.daily.time.map((d,i)=>({date:d,max:Math.round(data.daily.temperature_2m_max[i]),min:Math.round(data.daily.temperature_2m_min[i]),rain:data.daily.precipitation_probability_max[i]??0})),
+      source:"live", fetchedAt:Date.now()
+    };
+  }catch(err){
+    LIVE_WEATHER[wilaya.code]={t:null,h:null,w:null,rain:null,daily:[],source:"error",fetchedAt:Date.now()};
+  }
+  refreshWeatherUI();
+}
+function refreshWeatherUI(){ renderHome(); renderWeather(); fillDetails(firesFor(currentWilaya)[0]); }
 
-const WEATHER_DATA = {
-  "01":[38,14,31],"06":[34,27,24],"10":[33,29,19],"15":[35,22,28],"18":[32,46,17],"21":[33,51,16],"31":[36,38,25],"32":[35,25,27]
-};
 const I18N = {
  ar:{live:"مباشر",bannerTitle:"مراقبة حرائق 69 ولاية",bannerSub:"اختر أي ولاية لعرض الطقس والحرائق والتنبيهات الخاصة بها",wilayas:"الولايات",activeFires:"حرائق نشطة",temperature:"الحرارة",humidity:"الرطوبة",wind:"الرياح",wilayaDirectory:"دليل الولايات",searchPlaceholder:"ابحث عن ولاية أو رمز",wilaya:"الولاية",commune:"البلدية",coordinates:"الإحداثيات",detectionTime:"وقت الاكتشاف",satelliteSource:"مصدر الرصد",confidence:"الثقة",distance:"المسافة",fireRiskLevel:"الخطر",viewOnMap:"عرض على الخريطة",share:"مشاركة",weather:"الطقس",wxCond:"بيانات الطقس للولاية المحددة",rainChance:"احتمال المطر",sevenDayForecast:"توقعات 7 أيام",fireWeatherRisk:"خطر الطقس الناري",fwiDesc:"مؤشر تجريبي يعتمد على الحرارة والرطوبة والرياح. لا يُعد تنبيهًا رسميًا.",alertsTitle:"التنبيهات",filterAll:"الكل",riskExtreme:"قصوى",riskHigh:"مرتفع",riskModerate:"متوسط",riskLow:"منخفض",navHome:"الرئيسية",navMap:"الخريطة",navDetails:"التفاصيل",navWeather:"الطقس",navAlerts:"التنبيهات",satelliteLayer:"قمر صناعي",standardLayer:"عادي",firmsHelp:"احصل على مفتاح مجاني من firms.modaps.eosdis.nasa.gov/api/map_key ثم الصقه هنا لتفعيل بيانات الحرائق الحقيقية. يبقى المفتاح محفوظًا على هاتفك فقط.",firmsSave:"حفظ وتحديث",firmsClose:"إغلاق"},
  fr:{live:"DIRECT",bannerTitle:"Surveillance des incendies — 69 wilayas",bannerSub:"Sélectionnez une wilaya pour voir météo, feux et alertes",wilayas:"Wilayas",activeFires:"Incendies actifs",temperature:"Température",humidity:"Humidité",wind:"Vent",wilayaDirectory:"Liste des wilayas",searchPlaceholder:"Rechercher une wilaya ou un code",wilaya:"Wilaya",commune:"Commune",coordinates:"Coordonnées",detectionTime:"Heure de détection",satelliteSource:"Source",confidence:"Confiance",distance:"Distance",fireRiskLevel:"Risque",viewOnMap:"Voir sur la carte",share:"Partager",weather:"Météo",wxCond:"Météo de la wilaya sélectionnée",rainChance:"Probabilité de pluie",sevenDayForecast:"Prévisions 7 jours",fireWeatherRisk:"Risque météo d'incendie",fwiDesc:"Indice de démonstration basé sur chaleur, humidité et vent. Pas une alerte officielle.",alertsTitle:"Alertes",filterAll:"Toutes",riskExtreme:"Extrême",riskHigh:"Élevé",riskModerate:"Modéré",riskLow:"Faible",navHome:"Accueil",navMap:"Carte",navDetails:"Détails",navWeather:"Météo",navAlerts:"Alertes",satelliteLayer:"Satellite",standardLayer:"Standard",firmsHelp:"Obtenez une clé gratuite sur firms.modaps.eosdis.nasa.gov/api/map_key puis collez-la ici pour activer les données réelles. La clé reste uniquement sur votre téléphone.",firmsSave:"Enregistrer et actualiser",firmsClose:"Fermer"},
@@ -558,10 +582,9 @@ function setLanguage(lang){
 }
 function selectWilaya(code){
  currentWilaya=WILAYAS.find(w=>w.code===code)||WILAYAS[0];
- renderHome(); renderWeather(); renderAlerts(); renderMap();
+ renderHome(); renderWeather(); renderAlerts(); renderMap(); fetchWeather(currentWilaya);
  goTo("details"); fillDetails(firesFor(currentWilaya)[0]);
-}
-function renderWilayas(q=""){
+}function renderWilayas(q=""){
  q=q.trim().toLowerCase();
  const list=document.getElementById("wilayaList");
  const filtered=WILAYAS.filter(w=>w.code.includes(q)||w.name.ar.toLowerCase().includes(q)||w.name.fr.toLowerCase().includes(q));
@@ -572,10 +595,12 @@ function renderWilayas(q=""){
    <span class="risk-badge risk-${max}" style="font-size:10px">${fs.length?fs.length+" 🔥":riskLabel("low")}</span>
   </div>`
  }).join("")||`<div style="padding:20px;text-align:center;color:var(--text-dim)">لا توجد نتائج</div>`;
-}
-function renderHome(){
- const all=WILAYAS.reduce((n,w)=>n+firesFor(w).length,0), fs=firesFor(currentWilaya), wx=WEATHER_DATA[currentWilaya.code]||[32,35,18];
- document.getElementById("totalFires").textContent=all; document.getElementById("homeTemp").textContent=wx[0]+"°"; document.getElementById("homeHumidity").textContent=wx[1]+"%"; document.getElementById("homeWind").textContent=wx[2]+" km/h";
+}function renderHome(){
+ const all=WILAYAS.reduce((n,w)=>n+firesFor(w).length,0), wx=LIVE_WEATHER[currentWilaya.code];
+ document.getElementById("totalFires").textContent=all;
+ document.getElementById("homeTemp").textContent=(wx&&wx.t!=null)?wx.t+"°":"—";
+ document.getElementById("homeHumidity").textContent=(wx&&wx.h!=null)?wx.h+"%":"—";
+ document.getElementById("homeWind").textContent=(wx&&wx.w!=null)?wx.w+" km/h":"—";
 }
 function fillDetails(f){
  f=f||{commune:"—",risk:"low",dist:"—",ago:0,confidence:"—",coords:"—"};
@@ -584,16 +609,19 @@ function fillDetails(f){
  document.getElementById("det-coords").textContent=f.coords; document.getElementById("det-time").textContent=f.ago?f.ago+" min":"—";
  document.getElementById("det-source").textContent=f.satellite||(dataSource==="live"?"—":"VIIRS / MODIS");
  document.getElementById("det-confidence").textContent=f.confidence+"%"; document.getElementById("det-distance").textContent=f.dist+" km";
- document.getElementById("det-wind").textContent=(WEATHER_DATA[currentWilaya.code]||[0,0,0])[2]+" km/h";
+ document.getElementById("det-wind").textContent=(()=>{const wx=LIVE_WEATHER[currentWilaya.code]; return (wx&&wx.w!=null)?wx.w+" km/h":"—";})();
  document.getElementById("det-risk").textContent=riskLabel(f.risk); document.getElementById("det-risk2").textContent=riskLabel(f.risk);
  document.getElementById("det-risk-badge").className="risk-badge risk-"+f.risk;
 }
 function openDetails(code){if(code){currentWilaya=WILAYAS.find(w=>w.code===code)||currentWilaya} fillDetails(firesFor(currentWilaya)[0]); goTo("details")}
 function renderWeather(){
- const wx=WEATHER_DATA[currentWilaya.code]||[32,35,18]; document.getElementById("weatherWilaya").textContent=currentWilaya.name[currentLang];
- document.getElementById("wxTemp").textContent=wx[0]+"°"; document.getElementById("wxHumidity").textContent=wx[1]+"%"; document.getElementById("wxWind").textContent=wx[2]+" km/h"; document.getElementById("wxRain").textContent=Math.max(5,50-wx[1])+"%";
- const score=Math.min(99,Math.max(5,Math.round((wx[0]*1.5)+(100-wx[1])*0.45+wx[2]*0.35))); document.getElementById("fwiScore").textContent=score+" / 100";
- document.getElementById("daily").innerHTML=[0,1,2,3,4,5,6].map((d,i)=>`<div class="day-row"><span class="day-name">${["اليوم","غدًا","بعد غد","اليوم 4","اليوم 5","اليوم 6","اليوم 7"][i]}</span><span class="day-temps"><span class="hi">${wx[0]-i}°</span><span class="lo">${wx[0]-13-i}°</span></span></div>`).join("");
+ const wx=LIVE_WEATHER[currentWilaya.code]; document.getElementById("weatherWilaya").textContent=currentWilaya.name[currentLang];
+ const ok=wx&&wx.t!=null;
+ document.getElementById("wxTemp").textContent=ok?wx.t+"°":"—"; document.getElementById("wxHumidity").textContent=ok?wx.h+"%":"—";
+ document.getElementById("wxWind").textContent=ok?wx.w+" km/h":"—"; document.getElementById("wxRain").textContent=ok?wx.rain+"%":"—";
+ document.getElementById("fwiScore").textContent=ok?Math.min(99,Math.max(5,Math.round((wx.t*1.5)+(100-wx.h)*0.45+wx.w*0.35)))+" / 100":"— / 100";
+ document.getElementById("daily").innerHTML=ok&&wx.daily.length?wx.daily.map(d=>`<div class="day-row"><span class="day-name">${dayLabel(d.date)}</span><span class="day-temps"><span class="hi">${d.max}°</span><span class="lo">${d.min}°</span></span></div>`).join("")
+   :`<div style="padding:14px;text-align:center;color:var(--text-dim);font-size:12px">${wx&&wx.source==="error"?"تعذّر الاتصال بخدمة الطقس":"جارٍ التحميل..."}</div>`;
 }
 function renderAlerts(){
  const fs=[]; WILAYAS.forEach(w=>firesFor(w).forEach(f=>fs.push({...f,w})));
@@ -612,9 +640,10 @@ document.querySelectorAll(".lang-btn").forEach(b=>b.addEventListener("click",()=
 document.getElementById("wilayaSearch").addEventListener("input",e=>renderWilayas(e.target.value));
 document.getElementById("mapSearch").addEventListener("input",e=>{const q=e.target.value.toLowerCase();const w=WILAYAS.find(x=>x.code===q||x.name.ar.toLowerCase().includes(q)||x.name.fr.toLowerCase().includes(q));if(w)selectWilaya(w.code)});
 document.querySelectorAll(".chip").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter;renderAlerts()}));
-setLanguage("ar"); renderHome(); renderWilayas(); renderMap(); renderAlerts(); renderWeather(); fillDetails(firesFor(currentWilaya)[0]);
+setLanguage("ar"); renderHome(); renderWilayas(); renderMap(); renderAlerts(); renderWeather(); fillDetails(firesFor(currentWilaya)[0]); fetchWeather(currentWilaya);
 fetchFires(false);
 setInterval(()=>fetchFires(false), 15*60*1000); // إعادة الجلب كل 15 دقيقة (حدود FIRMS: 5000 طلب/10 دقائق)
+  setInterval(()=>fetchWeather(currentWilaya), 20*60*1000);
 </script>
 </body>
 </html>
